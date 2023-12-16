@@ -1,0 +1,21 @@
+name: 'Export Gradle properties'
+description: 'Creates a map of outputs out of Gradle properties.'
+author: 'Guillermo Calvo'
+branding:
+  icon: 'file-text'
+  color: 'purple'
+
+runs:
+  using: composite
+  steps:
+
+  - if: runner.os == 'Linux' || runner.os == 'macOS'
+    shell: bash
+    run: |
+      [ -x ./gradlew ] || chmod +x ./gradlew
+      ./gradlew properties -q | grep ': ' | sed 's/: /=/' >> "$GITHUB_OUTPUT"
+
+  - if: runner.os == 'Windows'
+    shell: pwsh
+    run: |
+      .\gradlew.bat properties -q | find ': ' | %{$_ -replace '^([^ ]+): ','$1='} >> "$GITHUB_OUTPUT"
