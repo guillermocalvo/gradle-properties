@@ -4,6 +4,16 @@ author: 'Guillermo Calvo'
 branding:
   icon: 'file-text'
   color: 'purple'
+inputs:
+  change_dir:
+    description: 'The directory to change to'
+    required: false
+  project_dir:
+    description: 'The start directory for Gradle'
+    required: false
+  property:
+    description: 'A specific property to output'
+    required: false
 
 runs:
   using: composite
@@ -12,10 +22,16 @@ runs:
   - if: runner.os == 'Linux' || runner.os == 'macOS'
     shell: bash
     run: |
+      [ -n "${{ inputs.change_dir  }}" ] && cd "${{ inputs.change_dir }}"
+      [ -n "${{ inputs.project_dir }}" ] && PROJECT_DIR="-p ${{ inputs.project_dir }}"   || PROJECT_DIR=""
+      [ -n "${{ inputs.property    }}" ] && PROPERTY="--property ${{ inputs.property }}" || PROPERTY=""
       [ -x ./gradlew ] || chmod +x ./gradlew
-      ./gradlew properties -q | grep ': ' | sed 's/: /=/' >> "$GITHUB_OUTPUT"
+      ./gradlew properties -q $PROJECT_DIR $PROPERTY | grep ': ' | sed 's/: /=/' >> "$GITHUB_OUTPUT"
 
   - if: runner.os == 'Windows'
     shell: pwsh
     run: |
-      .\gradlew.bat properties -q | find ': ' | %{$_ -replace '^([^ ]+): ','$1='} >> "$GITHUB_OUTPUT"
+      if ("${{ inputs.change_dir  }}" -ne "") { cd "${{ inputs.change_dir }}" }
+      if ("${{ inputs.project_dir }}" -ne "") { $PROJECT_DIR="-p ${{ inputs.project_dir }}" }   else { $PROJECT_DIR="" }
+      if ("${{ inputs.property    }}" -ne "") { $PROPERTY="--property ${{ inputs.property }}" } else { $PROPERTY="" }
+      .\gradlew.bat properties -q $PROJECT_DIR $PROPERTY | find ': ' | %{$_ -replace '^([^ ]+): ','$1='} >> "$GITHUB_OUTPUT"
