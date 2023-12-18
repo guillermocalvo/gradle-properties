@@ -13,8 +13,83 @@ These outputs can then be referenced by other steps or jobs.
 steps:
   - uses: actions/checkout@v4
 
-  - uses: guillermocalvo/gradle-properties@v1
+  - uses: guillermocalvo/gradle-properties@v2
     id: properties
+    with:
+      # An optional directory to change to.
+      # Default: root directory.
+      # Can be used when Gradle wrapper is in a different directory.
+      change_dir: my_path
+
+      # An optional start directory for Gradle.
+      # Default: root project.
+      # Can be used in multi-project builds.
+      project_dir: lib
+
+      # An optional property to output.
+      # Default: all project properties are exported.
+      # Can be used to export just one specific property.
+      property: name
 
   - run: 'echo Project name: ${{ steps.properties.outputs.name }}'
+```
+
+
+## Scenarios
+
+These are some example scenarios.
+
+
+### Export all properties in the root project
+
+```yml
+- uses: guillermocalvo/gradle-properties@v2
+  id: properties
+```
+
+
+### Export just one property in the root project
+
+```yml
+- uses: guillermocalvo/gradle-properties@v2
+  id: properties
+  with:
+    property: version
+```
+
+
+### Export all properties in a subproject
+
+```yml
+- uses: guillermocalvo/gradle-properties@v2
+  id: properties
+  with:
+    project_dir: lib
+```
+
+
+### Export all properties when Gradle wrapper is in a different directory
+
+```yml
+- uses: guillermocalvo/gradle-properties@v2
+  id: properties
+  with:
+    change_dir: my_path
+```
+
+
+### Create a SNAPSHOT release
+
+```yml
+steps:
+
+  - uses: guillermocalvo/gradle-properties@v2
+    id: properties
+    with:
+      property: version
+
+  - uses: softprops/action-gh-release@v2
+    if: endsWith(${{ steps.properties.outputs.version }}, '-SNAPSHOT')
+    with:
+      prerelease: true
 ```
