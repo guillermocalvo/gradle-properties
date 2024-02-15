@@ -5,14 +5,17 @@ branding:
   icon: 'file-text'
   color: 'purple'
 inputs:
+  output_file:
+    description: 'The output file to export properties to'
+    required: true
   change_dir:
     description: 'The directory to change to'
     required: false
   project_dir:
     description: 'The start directory for Gradle'
     required: false
-  property:
-    description: 'A specific property to output'
+  export:
+    description: 'The specific properties to export'
     required: false
 
 runs:
@@ -22,16 +25,28 @@ runs:
   - if: runner.os == 'Linux' || runner.os == 'macOS'
     shell: bash
     run: |
-      [ -n "${{ inputs.change_dir  }}" ] && cd "${{ inputs.change_dir }}"
-      [ -n "${{ inputs.project_dir }}" ] && PROJECT_DIR="-p ${{ inputs.project_dir }}"   || PROJECT_DIR=""
-      [ -n "${{ inputs.property    }}" ] && PROPERTY="--property ${{ inputs.property }}" || PROPERTY=""
       [ -x ./gradlew ] || chmod +x ./gradlew
-      ./gradlew properties -q $PROJECT_DIR $PROPERTY | grep ': ' | sed 's/: /=/' >> "$GITHUB_OUTPUT"
+      [ -n "${{ inputs.change_dir  }}" ] && cd "${{ inputs.change_dir }}"
+      [ -n "${{ inputs.project_dir }}" ] && PROJECT_DIR="-p ${{ inputs.project_dir }}" || PROJECT_DIR=""
+      if [ -n "${{ inputs.export   }}" ]
+      then
+        for NAME in `echo "${{ inputs.export }}" | sed 's/,/\n/g'`
+        do
+          ./gradlew properties -q $PROJECT_DIR --property "$NAME" | grep ': ' | sed 's/: /=/' >> "${{ inputs.output_file }}"
+        done
+      else
+        ./gradlew properties -q $PROJECT_DIR | grep ': ' | sed 's/: /=/' >> "${{ inputs.output_file }}"
+      fi
 
   - if: runner.os == 'Windows'
     shell: pwsh
     run: |
       if ("${{ inputs.change_dir  }}" -ne "") { cd "${{ inputs.change_dir }}" }
-      if ("${{ inputs.project_dir }}" -ne "") { $PROJECT_DIR="-p ${{ inputs.project_dir }}" }   else { $PROJECT_DIR="" }
-      if ("${{ inputs.property    }}" -ne "") { $PROPERTY="--property ${{ inputs.property }}" } else { $PROPERTY="" }
-      .\gradlew.bat properties -q $PROJECT_DIR $PROPERTY | find ': ' | %{$_ -replace '^([^ ]+): ','$1='} >> "$GITHUB_OUTPUT"
+      if ("${{ inputs.project_dir }}" -ne "") { $PROJECT_DIR="-p ${{ inputs.project_dir }}" } else { $PROJECT_DIR="" }
+      if ("${{ inputs.export      }}" -ne "") {
+        foreach ($NAME in "${{ inputs.export }}".split(",")) {
+          .\gradlew.bat properties -q $PROJECT_DIR --property $NAME | find ': ' | %{$_ -replace '^([^ ]+): ','$1='} >> "${{ inputs.output_file }}"
+        }
+      } else {
+        .\gradlew.bat properties -q $PROJECT_DIR | find ': ' | %{$_ -replace '^([^ ]+): ','$1='} >> "${{ inputs.output_file }}"
+      }
